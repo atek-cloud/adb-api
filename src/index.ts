@@ -213,8 +213,9 @@ export function defineTable<T extends object = object>(tableId: string, desc: Ta
   return factory
 }
 
-class AdbNiceApi {
-  constructor(public api = createClient()) {}
+const api = createClient()
+export default {
+  api,
   db (dbId: string|DbSettings, opts?: DbSettings) {
     if (typeof dbId === 'string') {
       return new AdbDatabase(this.api, dbId, opts)
@@ -223,5 +224,3 @@ class AdbNiceApi {
     }
   }
 }
-
-export default new AdbNiceApi()
