@@ -31,6 +31,7 @@ export class NetworkSettings {
 }
 
 export class DbSettings {
+  dbId?: string = ''
   type?: DbInternalType
   alias?: string // An alias ID for the application to reference the database.
   displayName?: string // The database's display name.
@@ -41,6 +42,7 @@ export class DbSettings {
   static schema = {
     type: 'object',
     properties: {
+      dbId: {type: 'string'},
       type: {type: 'string'},
       alias: {type: 'string'},
       displayName: {type: 'string'},

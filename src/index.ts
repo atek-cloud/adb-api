@@ -14,21 +14,19 @@ export function createServer (handlers: any) {
 }
 
 export class AdbDatabase {
-  public isReady: Promise<any>|undefined
+  public isReady: Promise<any>
   constructor (public api: AdbApi, public dbId: string, opts?: DbSettings) {
-    if (opts) {
-      if (!dbId) {
-        this.isReady = api.dbCreate(opts).then(res => {
-          this.dbId = res.dbId
-        })
-      } else if (!HYPER_KEY_RE.test(dbId)) {
-        this.isReady = api.dbGetOrCreate(dbId, opts).then(res => {
-          this.dbId = res.dbId
-        })
-      }
-      if (!this.isReady) {
-        this.isReady = Promise.resolve(undefined)
-      }
+    opts = opts || {}
+    if (!dbId) {
+      this.isReady = api.dbCreate(opts).then(res => {
+        this.dbId = res.dbId
+      })
+    } else if (!HYPER_KEY_RE.test(dbId)) {
+      this.isReady = api.dbGetOrCreate(dbId, opts).then(res => {
+        this.dbId = res.dbId
+      })
+    } else {
+      this.isReady = Promise.resolve(undefined)
     }
   }
   
@@ -124,7 +122,7 @@ export class AdbDatabase {
 export class AdbTable<T extends object = object> {
   public isReady: Promise<any>
   constructor (public db: AdbDatabase, public tableId: string, public tableDesc: TableSettings) {
-    this.isReady = db.define(tableId, tableDesc)
+    this.isReady = db.isReady.then(() => db.define(tableId, tableDesc))
   }
 
   /**
