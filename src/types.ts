@@ -231,6 +231,10 @@ export interface AdbApi {
    * @desc Get the ADB process configuration
    */
   getConfig (): Promise<AdbProcessConfig>
+  /**
+   * @desc List databases owned by a given user
+   */
+  adminListDbsByOwningUser (owningUserKey: string): Promise<DbSettings[]>
 
   /**
    * @desc Create a new database
@@ -305,6 +309,10 @@ export const AdbValidators = {
   },
   getConfig: {
     response: AdbProcessConfig
+  },
+  adminListDbsByOwningUser: {
+    params: [{type: 'string'}],
+    response: {type: 'array', items: DbSettings.schema}
   },
   dbCreate: {
     params: [DbSettings],
