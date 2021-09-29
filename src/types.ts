@@ -1,5 +1,3 @@
-const EMPTY_BUFFER = Buffer.alloc(0)
-
 export class AdbProcessConfig {
   serverDbId: string = ''
   static schema = {
@@ -10,133 +8,79 @@ export class AdbProcessConfig {
   }
 }
 
+
 export class DbInfo {
   dbId: string = ''
+  writable?: boolean = false
+  isServerDb?: boolean = false
+  owner?: {
+    userKey?: string
+    serviceKey?: string
+  } = {serviceKey: ''}
+  alias?: string = ''
+  access?: string = ''
+  createdAt?: string = ''
   static schema = {
     type: 'object',
+    required: ['dbId'],
     properties: {
-      dbId: {type: 'string'}
+      dbId: {type: 'string'},
+      writable: {type: 'boolean'},
+      isServerDb: {type: 'boolean'},
+      owner: {
+        type: 'object',
+        properties: {
+          userKey: {type: 'string'},
+          serviceKey: {type: 'string'}
+        }
+      },
+      alias: {type: 'string'},
+      access: {type: 'string'},
+      createdAt: {
+        type: 'string',
+        format: 'date-time'
+      }
     }
   }
 }
 
-export class NetworkSettings {
-  access?: string
+export class DbConfig {
+  alias?: string = ''
+  access?: string = ''
   static schema = {
     type: 'object',
     properties: {
+      alias: {type: 'string'},
       access: {type: 'string'}
     }
   }
 }
 
-export class DbSettings {
-  dbId?: string = ''
-  type?: DbInternalType
-  alias?: string // An alias ID for the application to reference the database.
-  displayName?: string // The database's display name.
-  tables?: string[] // The database's initial configured tables.
-  network?: NetworkSettings // The database's network settings.
-  persist?: boolean // Does this application want to keep the database in storage?
-  presync?: boolean // Does this application want the database to be fetched optimistically from the network?
+export class DbAdminConfig {
+  owner?: {
+    userKey?: string
+    serviceKey?: string
+  } = {serviceKey: ''}
+  alias?: string = ''
+  access?: string = ''
   static schema = {
     type: 'object',
     properties: {
-      dbId: {type: 'string'},
-      type: {type: 'string'},
-      alias: {type: 'string'},
-      displayName: {type: 'string'},
-      tables: {type: 'array', items: {type: 'string'}},
-      network: NetworkSettings.schema,
-      persist: {type: 'boolean'},
-      presync: {type: 'boolean'},
-    }
-  }
-}
-
-export enum DbInternalType {
-  HYPERBEE = 'hyperbee'
-}
-
-export class TableTemplates {
-  table?: {
-    title?: string
-    description?: string
-  }
-  record?: {
-    key?: string
-    title?: string
-    description?: string
-  }
-  static schema = {
-    type: 'object',
-    properties: {
-      table: {
+      owner: {
         type: 'object',
         properties: {
-          title: {type: 'string'},
-          description: {type: 'string'}
+          userKey: {type: 'string'},
+          serviceKey: {type: 'string'}
         }
       },
-      record: {
-        type: 'object',
-        properties: {
-          key: {type: 'string'},
-          title: {type: 'string'},
-          description: {type: 'string'}
-        }
-      }
-    }
-  }
-}
-
-export class TableSettings {
-  revision?: number
-  templates?: TableTemplates
-  definition?: object
-  static schema = {
-    type: 'object',
-    properties: {
-      revision: {type: 'number'},
-      templates: TableTemplates.schema,
-      definition: {type: 'object'}
-    }
-  }
-}
-
-export class TableDescription extends TableSettings {
-  tableId: string = ''
-  static schema = {
-    type: 'object',
-    properties: {
-      revision: {type: 'number'},
-      templates: TableTemplates.schema,
-      definition: {type: 'object'},
-      tableId: {type: 'string'}
-    }
-  }
-}
-
-export class DbDescription {
-  dbId: string = ''
-  dbType: string = ''
-  displayName?: string
-  tables: TableDescription[] = []
-  static schema = {
-    type: 'object',
-    properties: {
-      dbId: {type: 'string'},
-      dbType: {type: 'string'},
-      displayName: {type: 'string'},
-      tables: {
-        type: 'array',
-        items: TableDescription.schema
-      }
+      alias: {type: 'string'},
+      access: {type: 'string'}
     }
   }
 }
 
 export class Record<T = object> {
+  valid? = true
   key: string = ''
   path: string = ''
   url: string = ''
@@ -145,47 +89,13 @@ export class Record<T = object> {
   value: T
   static schema = {
     type: 'object',
-    required: ['key', 'path', 'url', 'value'],
+    required: ['key', 'path', 'url'],
     properties: {
       key: {type: 'string'},
       path: {type: 'string'},
       url: {type: 'string'},
       seq: {type: 'number'},
       value: {type: 'object'}
-    }
-  }
-}
-
-export interface BlobMap {
-  [blobName: string]: BlobDesc
-}
-
-export class BlobDesc {
-  mimeType?: string
-  buf: Buffer = EMPTY_BUFFER
-  static schema = {
-    type: 'object',
-    required: ['buf'],
-    properties: {
-      mimeType: {type: 'string'},
-      buf: {type: 'string', contentEncoding: 'base64'}
-    }
-  }
-}
-
-export class Blob {
-  start: number = 0
-  end: number = 0
-  mimeType?: string
-  buf: Buffer = EMPTY_BUFFER
-  static schema = {
-    type: 'object',
-    required: ['start', 'end', 'buf'],
-    properties: {
-      start: {type: 'number'},
-      end: {type: 'number'},
-      mimeType: {type: 'string'},
-      buf: {type: 'string', contentEncoding: 'base64'}
     }
   }
 }
@@ -202,7 +112,14 @@ export class Diff {
   }
 }
 
-export class ListOpts {
+type onInvalidHandler = 'ignore'|'throw'|'prune'|((record: Record)=>Record|boolean)
+
+export interface ValidationOpts {
+  onInvalid: onInvalidHandler
+}
+
+export class ListOpts implements ValidationOpts {
+  onInvalid: onInvalidHandler = 'ignore'
   lt?: string
   lte?: string
   gt?: string
@@ -234,74 +151,68 @@ export interface AdbApi {
   /**
    * @desc List databases owned by a given user
    */
-  adminListDbsByOwningUser (owningUserKey: string): Promise<DbSettings[]>
+  adminListDbsByOwningUser (owningUserKey: string): Promise<DbInfo[]>
+  /**
+   * @desc Create a new database under a specific service
+   */
+  adminCreateDb (config: DbAdminConfig): Promise<DbInfo>
+  /**
+   * @desc Edit a service's config for a database
+   */
+  adminEditDbConfig (dbId: string, config: DbAdminConfig): Promise<void>
+  /**
+   * @desc Delete a database
+   */
+  adminDeleteDb (dbId: string): Promise<void>
 
   /**
    * @desc Create a new database
    */
-  dbCreate (opts: DbSettings): Promise<DbInfo>
+  dbCreate (opts: DbConfig): Promise<DbInfo>
   /**
    * @desc Get or create a database according to an alias. Database aliases are local to each application.
    */
-  dbGetOrCreate (alias: string, opts: DbSettings): Promise<DbInfo>
+  dbGetOrCreate (alias: string, opts: DbConfig): Promise<DbInfo>
   /**
    * @desc Configure a database's settings
    */
-  dbConfigure (dbId: string, config: DbSettings): Promise<void>
+  dbConfigure (dbId: string, config: DbConfig): Promise<void>
   /**
    * @desc Get a database's settings
    */
-  dbGetConfig (dbId: string): Promise<DbSettings>
+  dbGetConfig (dbId: string): Promise<DbConfig>
   /**
    * @desc List all databases configured to the calling service
    */
-  dbList (): Promise<DbSettings[]>
+  dbList (): Promise<DbInfo[]>
   /**
    * @desc Get metadata and information about a database.
    */
-  dbDescribe (dbId: string): Promise<DbDescription>
+  dbDescribe (dbId: string): Promise<DbInfo>
 
-  /**
-   * @desc Register a table's schema and metadata. 
-   */
-  tblDefine (dbId: string, tableId: string, desc: TableSettings): Promise<TableDescription>
   /**
    * @desc List records in a table.
    */
-  tblList (dbId: string, tableId: string, opts?: ListOpts): Promise<{records: Record[]}>
+  recordList (dbId: string, path: string|string[], opts?: ListOpts): Promise<{records: Record[]}>
   /**
    * @desc Get a record in a table.
    */
-  tblGet (dbId: string, tableId: string, key: string): Promise<Record>
-  /**
-   * @desc Add a record to a table.
-   */
-  tblCreate (dbId: string, tableId: string, value: object, blobs?: BlobMap): Promise<Record>
+  recordGet (dbId: string, path: string|string[]): Promise<Record>
   /**
    * @desc Write a record to a table.
    */
-  tblPut (dbId: string, tableId: string, key: string, value: object): Promise<Record>
+  recordPut (dbId: string, path: string|string[], value: object): Promise<Record>
   /**
    * @desc Delete a record from a table.
    */
-  tblDelete (dbId: string, tableId: string, key: string): Promise<void>
+  recordDelete (dbId: string, path: string|string[]): Promise<void>
   /**
    * @desc Enumerate the differences between two versions of the database.
    */
-  tblDiff (dbId: string, opts: {left: number, right?: number, tableIds?: string[]}): Promise<Diff[]>
-  /**
-   * @desc Get a blob of a record.
-   */
-  tblGetBlob (dbId: string, tableId: string, key: string, blobName: string): Promise<Blob>
-  /**
-   * @desc Write a blob of a record.
-   */
-  tblPutBlob (dbId: string, tableId: string, key: string, blobName: string, blobValue: BlobDesc): Promise<void>
-  /**
-   * @desc Delete a blob of a record.
-   */
-  tblDelBlob (dbId: string, tableId: string, key: string, blobName: string): Promise<void>
+  recordDiff (dbId: string, opts: {left: number, right?: number, tableIds?: string[]}): Promise<Diff[]>
 }
+
+const pathParam = {oneOf: [{type: 'string'}, {type: 'array', items: {type: 'string'}}]}
 
 export const AdbValidators = {
   init: {
@@ -312,65 +223,47 @@ export const AdbValidators = {
   },
   adminListDbsByOwningUser: {
     params: [{type: 'string'}],
-    response: {type: 'array', items: DbSettings.schema}
+    response: {type: 'array', items: DbInfo.schema}
   },
   dbCreate: {
-    params: [DbSettings],
+    params: [DbConfig],
     response: DbInfo
   },
   dbGetOrCreate: {
-    params: [{type: 'string'}, DbSettings],
+    params: [{type: 'string'}, DbConfig],
     response: DbInfo
   },
   dbConfigure: {
-    params: [{type: 'string'}, DbSettings]
+    params: [{type: 'string'}, DbConfig]
   },
   dbGetConfig: {
     params: [{type: 'string'}],
-    response: DbSettings
+    response: DbConfig
   },
   dbList: {
-    response: {type: 'array', items: DbSettings.schema}
+    response: {type: 'array', items: DbInfo.schema}
   },
   dbDescribe: {
     params: [{type: 'string'}],
-    response: DbDescription
+    response: DbInfo
   },
-  tblDefine: {
-    params: [{type: 'string'}, {type: 'string'}, TableSettings],
-    response: TableDescription
-  },
-  tblList: {
-    params: [{type: 'string'}, {type: 'string'}, ListOpts],
+  recordList: {
+    params: [{type: 'string'}, pathParam, ListOpts],
     response: {type: 'object', properties: {records: {type: 'array', items: Record.schema}}}
   },
-  tblGet: {
-    params: [{type: 'string'}, {type: 'string'}, {type: 'string'}],
+  recordGet: {
+    params: [{type: 'string'}, pathParam],
     response: Record
   },
-  tblCreate: {
-    params: [{type: 'string'}, {type: 'string'}, {type: 'object'}, {type: 'object', patternProperties: {'.*': BlobDesc.schema}}],
+  recordPut: {
+    params: [{type: 'string'}, pathParam, {type: 'object'}],
     response: Record
   },
-  tblPut: {
-    params: [{type: 'string'}, {type: 'string'}, {type: 'string'}, {type: 'object'}],
-    response: Record
+  recordDelete: {
+    params: [{type: 'string'}, pathParam]
   },
-  tblDelete: {
-    params: [{type: 'string'}, {type: 'string'}, {type: 'string'}]
-  },
-  tblDiff: {
+  recordDiff: {
     params: [{type: 'string'}, {type: 'object', properties: {left: {type: 'number'}, right: {type: 'number'}, tableIds: {type: 'array', items: {type: 'string'}}}}],
     response: {type: 'array', items: Diff.schema}
-  },
-  tblGetBlob: {
-    params: [{type: 'string'}, {type: 'string'}, {type: 'string'}, {type: 'string'}],
-    response: Blob
-  },
-  tblPutBlob: {
-    params: [{type: 'string'}, {type: 'string'}, {type: 'string'}, {type: 'string'}, BlobDesc]
-  },
-  tblDelBlob: {
-    params: [{type: 'string'}, {type: 'string'}, {type: 'string'}, {type: 'string'}]
   }
 }
